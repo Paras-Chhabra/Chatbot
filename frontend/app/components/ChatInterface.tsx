@@ -23,9 +23,15 @@ export default function ChatInterface() {
       id: "welcome",
       role: "assistant",
       content: "Hello! I'm your Aiven SQL Assistant. I can access your campaign database in real-time. Ask me about spend, clicks, or performance metrics.",
-      timestamp: new Date(),
+      timestamp: new Date(), // This will be updated on client mount
     },
   ]);
+
+  // Use an effect to set initial state correctly on client to avoid hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -81,6 +87,8 @@ export default function ChatInterface() {
       setIsLoading(false);
     }
   };
+
+  if (!mounted) return <div className="h-screen bg-slate-950" />;
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30">
@@ -142,7 +150,7 @@ export default function ChatInterface() {
               <div className="whitespace-pre-wrap">{msg.content}</div>
 
               <div className="mt-2 text-[10px] opacity-50 uppercase tracking-wider font-medium">
-                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {msg.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || ""}
               </div>
             </div>
           </div>

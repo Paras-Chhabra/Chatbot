@@ -14,27 +14,27 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
+  timestamp: string;
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "Hello! I'm your Aiven SQL Assistant. I can access your campaign database in real-time. Ask me about spend, clicks, or performance metrics.",
-      timestamp: new Date(), // This will be updated on client mount
-    },
-  ]);
-
-  // Use an effect to set initial state correctly on client to avoid hydration mismatch
+  const [messages, setMessages] = useState<Message[]>([]);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: "Hello! I'm your Aiven SQL Assistant. I can access your campaign database in real-time. Ask me about spend, clicks, or performance metrics.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,7 +52,7 @@ export default function ChatInterface() {
       id: Date.now().toString(),
       role: "user",
       content: input,
-      timestamp: new Date(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -69,8 +69,8 @@ export default function ChatInterface() {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response.data.response,
-        timestamp: new Date(),
+        content: String(response.data.response || ""),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, botMessage]);
@@ -80,7 +80,7 @@ export default function ChatInterface() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "Sorry, I encountered an error connecting to the database. Please check the backend logs.",
-        timestamp: new Date(),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -150,7 +150,7 @@ export default function ChatInterface() {
               <div className="whitespace-pre-wrap">{msg.content}</div>
 
               <div className="mt-2 text-[10px] opacity-50 uppercase tracking-wider font-medium">
-                {msg.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || ""}
+                {msg.timestamp || ""}
               </div>
             </div>
           </div>

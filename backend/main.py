@@ -25,6 +25,49 @@ class ChatRequest(BaseModel):
 async def root():
     return {"message": "Aiven SQL Chatbot API is running"}
 
+def extract_text_from_output(output):
+    """Recursively extract text content from agent output, filtering out metadata."""
+    if output is None:
+        return ""
+    
+    if isinstance(output, str):
+        return output
+    
+    if isinstance(output, dict):
+        # If it has a 'text' key, use that (common in Gemini responses)
+        if 'text' in output:
+            return output['text']
+        # If it has a 'content' key, use that
+        if 'content' in output:
+            return extract_text_from_output(output['content'])
+        # Otherwise, skip known metadata keys and extract remaining text
+        text_parts = []
+        for key, value in output.items():
+            if key not in ('type', 'thought_signature', 'metadata', 'id'):
+                extracted = extract_text_from_output(value)
+                if extracted:
+                    text_parts.append(extracted)
+        return " ".join(text_parts)
+    
+    if isinstance(output, list):
+        text_parts = []
+        for item in output:
+            extracted = extract_text_from_output(item)
+            if extracted:
+                text_parts.append(extracted)
+        return " ".join(text_parts)
+    
+    # For objects with content attribute (LangChain messages)
+    if hasattr(output, 'content'):
+        return extract_text_from_output(output.content)
+    
+    # Fallback: convert to string but avoid [object Object] equivalents
+    result = str(output)
+    if result.startswith('{') or result.startswith('['):
+        return ""  # Skip raw object representations
+    return result
+
+
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
@@ -32,25 +75,12 @@ async def chat(request: ChatRequest):
         response = agent.invoke({"input": request.message})
         output = response.get("output", "")
         
-        # Ensure output is always a string
-        if isinstance(output, str):
-            final_output = output
-        elif isinstance(output, dict):
-            # If it's a dict, extract 'text' or 'content' if available, else stringify
-            final_output = output.get("text") or output.get("content") or str(output)
-        elif isinstance(output, list):
-            # If it's a list, join string parts and stringify objects
-            parts = []
-            for item in output:
-                if isinstance(item, str):
-                    parts.append(item)
-                elif hasattr(item, 'content'):
-                    parts.append(str(item.content))
-                else:
-                    parts.append(str(item))
-            final_output = "".join(parts)
-        else:
-            final_output = str(output)
+        # Extract clean text from the output
+        final_output = extract_text_from_output(output)
+        
+        # Fallback if extraction returned empty
+        if not final_output.strip():
+            final_output = "I processed your request but couldn't generate a response."
         
         return {"response": final_output}
     except Exception as e:

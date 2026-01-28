@@ -65,11 +65,23 @@ export default function ChatInterface() {
       const response = await axios.post(`${apiUrl}/chat`, {
         message: input,
       });
+      // Handle response - ensure we get a proper string even if response contains objects
+      const rawResponse = response.data.response;
+      let contentString: string;
+
+      if (typeof rawResponse === 'string') {
+        contentString = rawResponse;
+      } else if (rawResponse === null || rawResponse === undefined) {
+        contentString = "";
+      } else {
+        // If it's an object, stringify it nicely
+        contentString = JSON.stringify(rawResponse, null, 2);
+      }
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: String(response.data.response || ""),
+        content: contentString,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
